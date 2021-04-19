@@ -7,6 +7,8 @@ IP=$3
 #docker stop $(docker images | grep 'c10m')
 #docker rmi $(docker images | grep 'c10m')
 
+docker network create --driver bridge --subnet 172.31.0.0/16 c10m
+
 docker run --network c10m --ip ${IP} -v $(pwd)/server:/server --name c10mserver --ulimit nofile=1000000:1000000 -d alpine /server
 
 #go build --tags "static netgo" -o client client.go
