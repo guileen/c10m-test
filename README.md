@@ -29,8 +29,6 @@
 
 但是实际项目中，仅仅是空闲连接并不能满足我们的要求。因为我们是需要处理有数据往来的连接数，主要的衡量指标是TPS（每秒传输量）和PPS（每秒数据包）。
 
-
-
 ## C10m问题 by Robert Graham
 
 C10m是继c10k问题之后提出的新问题，指单机1000万连接问题。40gbps网卡、32核、256G内存，这样的配置理论上已经可以处理千万并发连接了。但虽然硬件已经能够满足条件了，但是软件系统依然是复杂的。这就是C10M问题。
@@ -45,21 +43,31 @@ Robert Graham的演讲[《C10M Defending The Internet At Scale》(pdf)](https://
 * 10微秒抖动
 * 10核CPU并行
 
-本节内容摘自他的演讲：
-
 ![](/Users/admin/work/guileen.github.com/hexo/source/img/c10m/kernel-map.png)
 
 数据包从网卡到程序经过了一个很复杂的过程。
 
-### User-mode网络栈
+## User-mode网络栈
 
-* PF_RING/DPDK 使你可以直接获取raw packet而不经过网络协议栈。
-  * 对IDS、DNS服务友好
-  * 对web server类的服务不友好
-* User-mode TCP/IP 协议栈
-  * 6windgate 
+linux网络支持的新特性：RSS、RPS、RFS、XPS
 
-### 多核问题
+kernel优化：net.ipv4.* net.core.* 超时时间调整
+
+[:thumbsup: Cilium：BPF 和 XDP 参考指南（2019）](http://arthurchiao.art/blog/cilium-bpf-xdp-reference-guide-zh/)
+
+[《SDN handbook》](https://tonydeng.github.io/sdn-handbook/) 其中有很多网络知识，eBPF，XDP，DPDK等。
+
+[深入理解BPF：阅读清单](https://linux.cn/article-9507-1.html) 
+
+[深入浅出eBPF](https://www.ebpf.top/post/bpf_learn_path/)
+
+[高性能网络编程系列文章](http://www.52im.net/thread-578-1-1.html)
+
+书籍《Linux Observvability with BPF》
+
+## 多核问题
+
+CPU亲和性：linux sched_set_affinity函数绑定CPU核；Linux 提供用户态的numactl, taskset 工具。
 
 大多数代码无法在超过4核的状态下扩展？（really？）
 
@@ -91,35 +99,59 @@ Robert Graham的演讲[《C10M Defending The Internet At Scale》(pdf)](https://
 
 * 位数据代替大量integers
 * 索引（1~2字节）代替指针（8字节）
-* 避免padding数据结构（空值填充？）
-
-缓存友好的数据结构
+* 避免padding数据结构
 
 NUMA架构：加倍内存访问效率。
 
-对象池：
+## go 性能相关
 
-* 每对象、每线程、每socket。避免资源耗尽。
+[High performance go workshop](https://dave.cheney.net/high-performance-go-workshop/gopherchina-2019.html)
 
-预加载：
+[《Go语言设计与实现》6.5 调度器](https://draveness.me/golang/docs/part3-runtime/ch06-concurrency/golang-goroutine/)
 
-* 如：一次解析两个包，预加载下一个hash entry。
+[深入理解Golang runtime的调度](https://zboya.github.io/post/go_scheduler/)
 
+## go and CPU cache line
 
+[go and cpu cache](https://teivah.medium.com/go-and-cpu-caches-af5d32cc5592) [中文](https://segmentfault.com/a/1190000038957418) 其中关于缓存一致性、伪共享，Padding的优化技巧非常赞。
 
-## 高性能网络编程系列文章
+[cacheline对go性能的影响](https://colobu.com/2019/01/24/cacheline-affects-performance-in-go/) padding的技巧
 
-http://www.52im.net/thread-578-1-1.html
+[多核与channel性能测试](https://www.dmuth.org/multi-core-cpu-performance-in-golang/) 充分证明了L cache对性能的影响。
 
-CPU亲和性：linux sched_set_affinity函数绑定CPU核；Linux 提供用户态的numactl, taskset 工具。
+[go 1million concurrent websocket](https://www.freecodecamp.org/news/million-websockets-and-go-cc58418460bb/)
 
-linux网络支持的新特性：RSS、RPS、RFS、XPS
+## 如何将CPU与goroutine进行绑定
 
-kernel优化：net.ipv4.* net.core.* 超时时间调整
+[Pin goroutine to CPU core as thread](https://github.com/tsingson/cpuaffinity)
 
+[GOMAXPROCS与容器的相处之道](https://zhuanlan.zhihu.com/p/100165648)  使用[uber/automaxprocs](https://github.com/uber-go/automaxprocs)
 
+[CPU Affinity in Go](http://pythonwise.blogspot.com/2019/03/cpu-affinity-in-go.html)
 
-## Golang多核并发问题
+[NUMA-aware scheduler for Go](https://docs.google.com/document/u/0/d/1d3iI2QWURgDIsSR6G2275vMeQ_X7w-qxM2Vp7iGwwuM/pub) NUMA架构的调度器提案，尚未实现。如果实现将带来非常大的性能提升。
 
-* reuseport 提供了TCP net.Listener with SO_REUSEPORT, 将线性扩展多核CPU性能。
-* 
+## 端口复用
+
+将CPU与goroutine绑定的设想不仅复杂，还难以避免不同worker的跨cpu调度问题。因此，最好的解决方案是端口复用。reuseport 提供了TCP net.Listener with SO_REUSEPORT, 将线性扩展多核CPU性能。
+
+[epoll 和 perfork（类似reuseport）](https://colobu.com/2019/02/27/1m-go-tcp-connection-2/) 非常好的文章，以及相关的代码 [:star::star::star:1m-go-tcp-server](https://github.com/smallnest/1m-go-tcp-server)
+
+[fasthttp的提示以及reuseport](https://github.com/valyala/fasthttp#performance-optimization-tips-for-multi-core-systems)
+
+- 端口复用技术。Use [fasthttp/reuseport](https://godoc.org/github.com/valyala/fasthttp/reuseport) listener. 基于[tcplisten](https://github.com/valyala/tcplisten)
+- Run a separate server instance per CPU core with GOMAXPROCS=1.
+- Pin each server instance to a separate CPU core using [taskset](http://linux.die.net/man/1/taskset).
+- Ensure the interrupts of multiqueue network card are evenly distributed between CPU cores. See [this article](https://blog.cloudflare.com/how-to-achieve-low-latency/) for details.
+- Use Go 1.13 as it provides some considerable performance improvements.
+
+[libp2p/go-reuseport](https://github.com/libp2p/go-reuseport)
+
+## 高性能日志
+
+在高吞吐的网络下，日志也可能成为性能瓶颈。
+
+## 垃圾回收
+
+最好的解决方案就是避免垃圾回收，使用对象池。每对象、每线程、每socket。避免资源耗尽。
+
