@@ -9,7 +9,7 @@ IP=$3
 
 docker network create --driver bridge --subnet 172.31.0.0/16 c10m
 
-docker run --network c10m --ip ${IP} -v $(pwd)/server:/server --name c10mserver --ulimit nofile=1000000:1000000 -d alpine /server
+docker run --network c10m --ip ${IP} -v $(pwd)/server:/server --privileged --name c10mserver --ulimit nofile=1000000:1000000 -d alpine sh -c 'sysctl -w net.netfilter.nf_conntrack_max=1000000 && /server'
 
 #go build --tags "static netgo" -o client client.go
 for (( c=0; c<${REPLICAS}; c++ ))
