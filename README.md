@@ -53,6 +53,8 @@ linux网络支持的新特性：RSS、RPS、RFS、XPS
 
 kernel优化：net.ipv4.* net.core.* 超时时间调整
 
+[DPDK和XDP](https://cloud.tencent.com/developer/article/1484793) 介绍，DPDK是intel提供的用户态协议程序，XDP是linux内核的解决方案。
+
 [:thumbsup: Cilium：BPF 和 XDP 参考指南（2019）](http://arthurchiao.art/blog/cilium-bpf-xdp-reference-guide-zh/)
 
 [《SDN handbook》](https://tonydeng.github.io/sdn-handbook/) 其中有很多网络知识，eBPF，XDP，DPDK等。
@@ -135,7 +137,7 @@ NUMA架构：加倍内存访问效率。
 
 将CPU与goroutine绑定的设想不仅复杂，还难以避免不同worker的跨cpu调度问题。因此，最好的解决方案是端口复用。reuseport 提供了TCP net.Listener with SO_REUSEPORT, 将线性扩展多核CPU性能。
 
-[epoll 和 perfork（类似reuseport）](https://colobu.com/2019/02/27/1m-go-tcp-connection-2/) 非常好的文章，以及相关的代码 [:star::star::star:1m-go-tcp-server](https://github.com/smallnest/1m-go-tcp-server)
+[epoll 和 prefork（类似reuseport）](https://colobu.com/2019/02/27/1m-go-tcp-connection-2/) 非常好的文章，以及相关的代码 [:star::star::star:1m-go-tcp-server](https://github.com/smallnest/1m-go-tcp-server)
 
 [fasthttp的提示以及reuseport](https://github.com/valyala/fasthttp#performance-optimization-tips-for-multi-core-systems)
 
